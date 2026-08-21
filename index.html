@@ -120,6 +120,7 @@
   }
   .status-card { padding: 16px 16px 14px; }
   .status-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .status-top-right { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
   .status-name { font-size: 13px; font-weight: 700; color: var(--text1); }
   .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(255,255,255,.06); }
   .status-dot.ok { background: var(--up); }
@@ -301,7 +302,7 @@
   /* ---------- Mobile first adjustments ---------- */
   @media (max-width: 720px) {
     .status-row { grid-template-columns: 1fr; }
-    .topbar { padding: 18px 16px 4px; }
+    .topbar { padding: 18px 16px; }
     .wrap { padding: 0 16px; }
     .global-counter { text-align: left; }
     .brand-word { font-size: 18px; }
@@ -505,6 +506,7 @@
       Object.keys(dbState).forEach(function (k) {
         payload[k] = {
           lastPing: dbState[k].lastPing ? dbState[k].lastPing.toISOString() : null,
+          lastSource: dbState[k].lastSource || null,
           error: dbState[k].error || null
         };
       });
@@ -521,6 +523,7 @@
       Object.keys(payload).forEach(function (k) {
         out[k] = {
           lastPing: payload[k].lastPing ? new Date(payload[k].lastPing) : null,
+          lastSource: payload[k].lastSource || null,
           error: payload[k].error || null
         };
       });
@@ -574,10 +577,13 @@
         var d = daysSince(st.lastPing);
         daysHtml = '<div class="status-days ' + level + '">' + relativeFromNow(st.lastPing) + ' · ' + d.toFixed(1) + ' de 7 días</div>';
       }
+      var originHtml = (!st.error && st.lastSource)
+        ? '<span class="pill ' + originPillClass(st.lastSource) + '">' + originLabel(st.lastSource) + '</span>'
+        : '';
       return (
         '<div class="card status-card">' +
           '<div class="status-top"><span class="status-name">' + db.label + '</span>' +
-          '<span class="status-dot ' + level + '"></span></div>' +
+          '<span class="status-top-right">' + originHtml + '<span class="status-dot ' + level + '"></span></span></div>' +
           '<div class="status-value">' + valueHtml + '</div>' +
           daysHtml +
         '</div>'
@@ -653,10 +659,18 @@
         return res.json();
       })
       .then(function (rows) {
-        dbState[db.key] = { lastPing: rows.length ? new Date(rows[0].pinged_at) : null, error: null };
+        dbState[db.key] = {
+          lastPing: rows.length ? new Date(rows[0].pinged_at) : null,
+          lastSource: rows.length ? rows[0].source : null,
+          error: null
+        };
       })
       .catch(function (err) {
-        dbState[db.key] = { lastPing: (dbState[db.key] && dbState[db.key].lastPing) || null, error: friendlyError(err) };
+        dbState[db.key] = {
+          lastPing: (dbState[db.key] && dbState[db.key].lastPing) || null,
+          lastSource: (dbState[db.key] && dbState[db.key].lastSource) || null,
+          error: friendlyError(err)
+        };
       });
   }
 
