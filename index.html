@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Keep Alive — Alquemis</title>
+<meta name="description" content="Mantiene activas las bases de datos Supabase de Alquemis con un ping manual o automático antes de los 7 días de inactividad.">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#123a4d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Keep Alive">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="shortcut icon" href="icons/favicon.ico">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --grad-a: #2f6b83;
+    --grad-b: #1a4a63;
+    --grad-c: #0b2530;
+    --card-bg: rgba(255, 255, 255, .055);
+    --card-bg-2: rgba(255, 255, 255, .09);
+    --border: rgba(255, 255, 255, .12);
+    --border-soft: rgba(255, 255, 255, .07);
+    --text1: rgba(255, 255, 255, .96);
+    --text2: rgba(255, 255, 255, .68);
+    --text3: rgba(255, 255, 255, .45);
+    --up: #6fe3b4;
+    --warn: #ffcf7a;
+    --down: #ff8f7a;
+    --accent: #5db8e8;
+    --accent2: #6fe3d0;
+    --accent-soft: rgba(93, 184, 232, .30);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255, 255, 255, .06) 0, transparent 45%),
+      linear-gradient(135deg, var(--grad-a) 0%, var(--grad-b) 55%, var(--grad-c) 100%);
+    font-family: var(--font);
+    color: var(--text1);
+    font-size: 14px;
+    padding-bottom: 32px;
+  }
+
+  a { color: var(--accent); }
+
+  /* ---------- Top bar ---------- */
+  .topbar-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(9, 30, 40, .85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    flex-wrap: wrap;
+    gap: 12px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  .brand-icon img { width: 24px; height: 24px; display: block; }
+  .brand-word { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .2px; line-height: 1.1; }
+  .brand-sub { font-size: 12px; color: var(--text3); }
+
+  .global-counter {
+    text-align: right;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .global-counter strong { display: block; font-size: 15px; color: var(--text1); font-weight: 700; }
+
+  /* ---------- Generic card ---------- */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px; }
+
+  /* ---------- Status row (3 db cards) ---------- */
+  .status-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 16px;
+    padding: 0 0 4px;
+  }
+  .status-card { padding: 16px 16px 14px; }
+  .status-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .status-name { font-size: 13px; font-weight: 700; color: var(--text1); }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(255,255,255,.06); }
+  .status-dot.ok { background: var(--up); }
+  .status-dot.warn { background: var(--warn); }
+  .status-dot.bad { background: var(--down); }
+  .status-dot.unknown { background: var(--text3); }
+  .status-value { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .status-value b { color: var(--text1); font-weight: 700; }
+  .status-days { margin-top: 6px; font-size: 11.5px; font-weight: 600; }
+  .status-days.ok { color: var(--up); }
+  .status-days.warn { color: var(--warn); }
+  .status-days.bad { color: var(--down); }
+
+  /* ---------- Action card ---------- */
+  .action-card {
+    margin-top: 16px;
+    padding: 26px 20px 22px;
+    text-align: center;
+  }
+  .action-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .action-sub { font-size: 12.5px; color: var(--text3); margin-bottom: 18px; }
+
+  .ka-button {
+    appearance: none;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 16px;
+    font-weight: 700;
+    color: #072028;
+    padding: 16px 38px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    box-shadow: 0 10px 28px rgba(93, 184, 232, .35), inset 0 1px 0 rgba(255,255,255,.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease;
+    width: 100%;
+    max-width: 320px;
+    justify-content: center;
+  }
+  .ka-button:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(93, 184, 232, .45), inset 0 1px 0 rgba(255,255,255,.4); }
+  .ka-button:active { transform: translateY(1px) scale(.99); }
+  .ka-button:disabled { opacity: .6; cursor: default; transform: none; }
+  .ka-button .icon { width: 20px; height: 20px; display: inline-flex; transition: transform .6s ease; }
+  .ka-button.spinning .icon { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .result-banner {
+    margin: 16px auto 0;
+    max-width: 480px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    display: none;
+    text-align: left;
+    line-height: 1.5;
+  }
+  .result-banner.show { display: block; }
+  .result-banner.ok { background: rgba(111, 227, 180, .14); border: 1px solid rgba(111, 227, 180, .35); color: var(--up); }
+  .result-banner.partial { background: rgba(255, 207, 122, .14); border: 1px solid rgba(255, 207, 122, .35); color: var(--warn); }
+  .result-banner.fail { background: rgba(255, 143, 122, .14); border: 1px solid rgba(255, 143, 122, .35); color: var(--down); }
+  .result-banner ul { margin: 6px 0 0; padding-left: 18px; font-weight: 500; }
+
+  /* ---------- History section ---------- */
+  .history-section { margin-top: 24px; }
+  .section-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .section-sub { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+
+  .history-card { padding: 14px 16px 10px; }
+  .history-scroll { overflow-x: auto; }
+  .history-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12.5px; }
+  .history-table th {
+    text-align: left;
+    padding: 7px 8px;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap;
+  }
+  .history-table td { padding: 7px 8px; color: var(--text1); overflow-wrap: break-word; }
+  .history-table th:nth-child(1), .history-table td:nth-child(1) { width: 46%; }
+  .history-table th:nth-child(2), .history-table td:nth-child(2) { width: 32%; }
+  .history-table th:nth-child(3), .history-table td:nth-child(3) { width: 22%; }
+  .history-table tbody tr { border-bottom: 1px solid var(--border-soft); }
+  .history-table tbody tr:last-child { border-bottom: none; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+  .pill.manual { background: rgba(93, 184, 232, .18); color: var(--accent); }
+  .pill.action { background: rgba(111, 227, 180, .16); color: var(--up); }
+  .pill.other { background: rgba(255,255,255,.1); color: var(--text2); }
+  .empty-row { color: var(--text3); font-size: 12.5px; padding: 14px 8px; }
+
+  .history-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 12px 4px 4px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .history-page-btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, .06);
+    color: var(--text1);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+  }
+  .history-page-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+  .history-page-btn:disabled { opacity: .35; cursor: default; }
+  .history-page-btns { display: flex; gap: 8px; }
+  .history-page-btn.icon-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text1);
+  }
+
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 20px 16px 4px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .footer a { color: var(--text2); text-decoration: underline; }
+
+  /* ---------- Recordatorio: Run workflow manual ---------- */
+  .reminder-card {
+    margin-top: 16px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .reminder-info { flex: 1; min-width: 200px; }
+  .reminder-label { font-size: 12.5px; color: var(--text2); margin-bottom: 4px; font-weight: 600; }
+  .reminder-value { font-size: 26px; font-weight: 800; color: var(--text1); line-height: 1; }
+  .reminder-value.ok { color: var(--up); }
+  .reminder-value.warn { color: var(--warn); }
+  .reminder-value.bad { color: var(--down); }
+  .reminder-unit { font-size: 13px; font-weight: 600; color: var(--text2); margin-left: 6px; }
+  .reminder-sub { font-size: 11.5px; color: var(--text3); margin-top: 6px; }
+  .reset-btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, .08);
+    color: var(--text1);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font);
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background .15s ease, transform .1s ease;
+  }
+  .reset-btn:hover { background: rgba(255, 255, 255, .14); }
+  .reset-btn:active { transform: scale(.97); }
+
+  /* ---------- Mobile first adjustments ---------- */
+  @media (max-width: 720px) {
+    .status-row { grid-template-columns: 1fr; }
+    .topbar { padding: 18px 16px 4px; }
+    .wrap { padding: 0 16px; }
+    .global-counter { text-align: left; }
+    .brand-word { font-size: 18px; }
+    .reminder-card { flex-direction: column; align-items: stretch; }
+    .reset-btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar-wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-icon"><img src="icons/icon-192.png" alt="Keep Alive"></div>
+        <div>
+          <div class="brand-word">Keep Alive</div>
+        </div>
+      </div>
+      <div class="global-counter">
+        <span>Último ping global</span>
+        <strong id="globalLastPing">—</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- Botón principal -->
+    <div class="card action-card">
+      <div class="action-title">Mantener las bases activas</div>
+      <div class="action-sub">Escribe un registro con la fecha y hora actual en las 3 bases de datos de una sola vez.</div>
+      <button class="ka-button" id="keepAliveBtn" type="button">
+        <span class="icon" id="btnIcon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#072028" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M3 12a9 9 0 0 1 15.3-6.4M21 12a9 9 0 0 1-15.3 6.4"/>
+            <path d="M17.5 3.5v4.5h-4.5"/>
+            <path d="M6.5 20.5V16h4.5"/>
+          </svg>
+        </span>
+        <span id="btnLabel">Keep Alive</span>
+      </button>
+      <div class="result-banner" id="resultBanner"></div>
+    </div>
+
+    <!-- Estado por base de datos -->
+    <div class="status-row" id="statusRow">
+      <!-- se llena por JS -->
+    </div>
+
+    <!-- Recordatorio: Run workflow manual en GitHub -->
+    <div class="card reminder-card">
+      <div class="reminder-info">
+        <div class="reminder-label">Recordatorio · Run workflow manual en GitHub</div>
+        <div class="reminder-value" id="workflowReminderValue">—</div>
+        <div class="reminder-sub">GitHub desactiva los workflows programados tras ~60 días sin actividad en el repo.</div>
+      </div>
+      <button class="reset-btn" id="resetWorkflowBtn" type="button">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.3-6.4M21 12a9 9 0 0 1-15.3 6.4"/><path d="M17.5 3.5v4.5h-4.5"/><path d="M6.5 20.5V16h4.5"/></svg>
+        Reiniciar
+      </button>
+    </div>
+
+    <!-- Historial -->
+    <div class="history-section">
+      <div class="section-title">Historial de pings</div>
+      <div class="section-sub">Últimos registros combinados de las 3 bases de datos.</div>
+      <div class="card history-card">
+        <div class="history-scroll">
+          <table class="history-table">
+            <thead>
+              <tr><th>Fecha y hora</th><th>Base de datos</th><th>Origen</th></tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="3" class="empty-row">Cargando historial…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="history-pagination" id="historyPagination" style="display:none;">
+          <span id="historyPageLabel">Página 1 de 1</span>
+          <div class="history-page-btns">
+            <button class="history-page-btn icon-btn" id="historyPrevBtn" type="button" aria-label="Página anterior">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="history-page-btn icon-btn" id="historyNextBtn" type="button" aria-label="Página siguiente">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Respaldo automático cada 3 días vía GitHub Actions.<br>
+    <span id="footerCopyright"></span>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  // -------------------------------------------------------------------
+  // Configuración de las 3 bases de datos.
+  // Las "anon keys" están diseñadas para ser públicas en el cliente;
+  // el control de acceso real vive en las políticas RLS de cada tabla
+  // (ver el SQL de configuración entregado junto con esta app).
+  // -------------------------------------------------------------------
+  var DATABASES = [
+    {
+      key: 'listerfy',
+      label: 'Listerfy',
+      url: 'https://onbexzwvbnumwuawesuu.supabase.co',
+      anonKey: 'sb_publishable_ez03kD82qJwruoL1Pojxhw_v8pSLdlR'
+    },
+    {
+      key: 'presentaciones',
+      label: 'Presentaciones',
+      url: 'https://pmeikbypkfemorfxdmsm.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZWlrYnlwa2ZlbW9yZnhkbXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NTUzNjMsImV4cCI6MjA5MjQzMTM2M30.2daW-0uxmFXibibilO4Wc51kmq9TjERSkt8fkdY9NHk'
+    },
+    {
+      key: 'timeline',
+      label: 'Timeline KL',
+      url: 'https://utkqzxsnyvblqndtkntx.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0a3F6eHNueXZibHFuZHRrbnR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTU5MjEsImV4cCI6MjA5MDQ5MTkyMX0.bxOZDHRtsYBkplffNzoxc2-OQMvG8qXdX_bXxg_CYlA'
+    }
+  ];
+
+  var TABLE = 'keep_alive_pings';
+  var LOCAL_CACHE_KEY = 'keepAliveLastState_v1';
+  var WORKFLOW_RESET_KEY = 'keepAliveWorkflowResetAt_v1';
+
+  var statusRow = document.getElementById('statusRow');
+  var historyBody = document.getElementById('historyBody');
+  var historyPagination = document.getElementById('historyPagination');
+  var historyPrevBtn = document.getElementById('historyPrevBtn');
+  var historyNextBtn = document.getElementById('historyNextBtn');
+  var historyPageLabel = document.getElementById('historyPageLabel');
+  var globalLastPing = document.getElementById('globalLastPing');
+  var btn = document.getElementById('keepAliveBtn');
+  var btnLabel = document.getElementById('btnLabel');
+  var btnIcon = document.getElementById('btnIcon');
+  var resultBanner = document.getElementById('resultBanner');
+
+  var dbState = {}; // key -> { lastPing: Date|null, error: string|null }
+  var HISTORY_PAGE_SIZE = 6;
+  var historyRows = [];
+  var historyPage = 0;
+
+  // ---------- helpers ----------
+  function fmtDateTime(d) {
+    try {
+      return d.toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return d.toISOString();
+    }
+  }
+
+  function relativeFromNow(d) {
+    var diffMs = Date.now() - d.getTime();
+    var mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'hace instantes';
+    if (mins < 60) return 'hace ' + mins + ' min';
+    var hours = Math.floor(mins / 60);
+    if (hours < 24) return 'hace ' + hours + ' h';
+    var days = Math.floor(hours / 24);
+    return 'hace ' + days + ' día' + (days === 1 ? '' : 's');
+  }
+
+  function daysSince(d) {
+    return (Date.now() - d.getTime()) / 86400000;
+  }
+
+  function statusLevel(d) {
+    if (!d) return 'unknown';
+    var days = daysSince(d);
+    if (days < 4) return 'ok';
+    if (days < 6) return 'warn';
+    return 'bad';
+  }
+
+  function originPillClass(source) {
+    if (source === 'manual') return 'manual';
+    if (source === 'github-action') return 'action';
+    return 'other';
+  }
+
+  function originLabel(source) {
+    if (source === 'manual') return 'Manual';
+    if (source === 'github-action') return 'GitHub Action';
+    return source || '—';
+  }
+
+  function saveCache() {
+    try {
+      var payload = {};
+      Object.keys(dbState).forEach(function (k) {
+        payload[k] = {
+          lastPing: dbState[k].lastPing ? dbState[k].lastPing.toISOString() : null,
+          error: dbState[k].error || null
+        };
+      });
+      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(payload));
+    } catch (e) {}
+  }
+
+  function loadCache() {
+    try {
+      var raw = localStorage.getItem(LOCAL_CACHE_KEY);
+      if (!raw) return null;
+      var payload = JSON.parse(raw);
+      var out = {};
+      Object.keys(payload).forEach(function (k) {
+        out[k] = {
+          lastPing: payload[k].lastPing ? new Date(payload[k].lastPing) : null,
+          error: payload[k].error || null
+        };
+      });
+      return out;
+    } catch (e) { return null; }
+  }
+
+  // ---------- recordatorio: Run workflow manual en GitHub ----------
+  function getWorkflowResetDate() {
+    try {
+      var raw = localStorage.getItem(WORKFLOW_RESET_KEY);
+      return raw ? new Date(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function setWorkflowResetNow() {
+    try { localStorage.setItem(WORKFLOW_RESET_KEY, new Date().toISOString()); } catch (e) {}
+    renderWorkflowReminder();
+  }
+
+  function renderWorkflowReminder() {
+    var el = document.getElementById('workflowReminderValue');
+    if (!el) return;
+    var resetDate = getWorkflowResetDate();
+    if (!resetDate) {
+      el.className = 'reminder-value';
+      el.textContent = 'Sin registro';
+      return;
+    }
+    var days = Math.floor(daysSince(resetDate));
+    var level = days < 45 ? 'ok' : (days < 55 ? 'warn' : 'bad');
+    el.className = 'reminder-value ' + level;
+    el.innerHTML = days + '<span class="reminder-unit">día' + (days === 1 ? '' : 's') + '</span>';
+  }
+
+  // ---------- render ----------
+  function renderStatusRow() {
+    statusRow.innerHTML = DATABASES.map(function (db) {
+      var st = dbState[db.key] || {};
+      var level = st.error ? 'bad' : statusLevel(st.lastPing);
+      var valueHtml;
+      if (st.error) {
+        valueHtml = '<span style="color:var(--down)">Error: ' + st.error + '</span>';
+      } else if (st.lastPing) {
+        valueHtml = '<b>' + fmtDateTime(st.lastPing) + '</b>';
+      } else {
+        valueHtml = 'Sin registros todavía';
+      }
+      var daysHtml = '';
+      if (!st.error && st.lastPing) {
+        var d = daysSince(st.lastPing);
+        daysHtml = '<div class="status-days ' + level + '">' + relativeFromNow(st.lastPing) + ' · ' + d.toFixed(1) + ' de 7 días</div>';
+      }
+      return (
+        '<div class="card status-card">' +
+          '<div class="status-top"><span class="status-name">' + db.label + '</span>' +
+          '<span class="status-dot ' + level + '"></span></div>' +
+          '<div class="status-value">' + valueHtml + '</div>' +
+          daysHtml +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  function renderGlobalCounter() {
+    var latest = null;
+    DATABASES.forEach(function (db) {
+      var st = dbState[db.key];
+      if (st && st.lastPing && (!latest || st.lastPing > latest)) latest = st.lastPing;
+    });
+    globalLastPing.textContent = latest ? relativeFromNow(latest) : 'Sin datos';
+    globalLastPing.title = latest ? fmtDateTime(latest) : '';
+  }
+
+  function renderHistory(rows) {
+    historyRows = rows;
+    historyPage = 0;
+    renderHistoryPage();
+  }
+
+  function renderHistoryPage() {
+    var totalPages = Math.max(1, Math.ceil(historyRows.length / HISTORY_PAGE_SIZE));
+    if (historyPage >= totalPages) historyPage = totalPages - 1;
+    if (historyPage < 0) historyPage = 0;
+
+    if (!historyRows.length) {
+      historyBody.innerHTML = '<tr><td colspan="3" class="empty-row">Todavía no hay registros. Presiona "Keep Alive" para crear el primero.</td></tr>';
+      historyPagination.style.display = 'none';
+      return;
+    }
+
+    var start = historyPage * HISTORY_PAGE_SIZE;
+    var pageRows = historyRows.slice(start, start + HISTORY_PAGE_SIZE);
+
+    historyBody.innerHTML = pageRows.map(function (r) {
+      return (
+        '<tr>' +
+          '<td>' + fmtDateTime(r.date) + '</td>' +
+          '<td>' + r.label + '</td>' +
+          '<td><span class="pill ' + originPillClass(r.source) + '">' + originLabel(r.source) + '</span></td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    historyPagination.style.display = totalPages > 1 ? 'flex' : 'none';
+    historyPageLabel.textContent = 'Página ' + (historyPage + 1) + ' de ' + totalPages;
+    historyPrevBtn.disabled = historyPage === 0;
+    historyNextBtn.disabled = historyPage >= totalPages - 1;
+  }
+
+  function showBanner(kind, html) {
+    resultBanner.className = 'result-banner show ' + kind;
+    resultBanner.innerHTML = html;
+  }
+
+  // ---------- data ----------
+  function restHeaders(db) {
+    return {
+      'apikey': db.anonKey,
+      'Authorization': 'Bearer ' + db.anonKey,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  function fetchLastPing(db) {
+    var url = db.url + '/rest/v1/' + TABLE + '?select=pinged_at,source&order=pinged_at.desc&limit=1';
+    return fetch(url, { headers: restHeaders(db) })
+      .then(function (res) {
+        if (!res.ok) return res.text().then(function (t) { throw new Error('HTTP ' + res.status + ' — ' + t.slice(0, 120)); });
+        return res.json();
+      })
+      .then(function (rows) {
+        dbState[db.key] = { lastPing: rows.length ? new Date(rows[0].pinged_at) : null, error: null };
+      })
+      .catch(function (err) {
+        dbState[db.key] = { lastPing: (dbState[db.key] && dbState[db.key].lastPing) || null, error: friendlyError(err) };
+      });
+  }
+
+  function fetchHistoryFor(db) {
+    var url = db.url + '/rest/v1/' + TABLE + '?select=pinged_at,source&order=pinged_at.desc&limit=12';
+    return fetch(url, { headers: restHeaders(db) })
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function (rows) {
+        return rows.map(function (r) { return { date: new Date(r.pinged_at), source: r.source, label: db.label }; });
+      })
+      .catch(function () { return []; });
+  }
+
+  function friendlyError(err) {
+    var msg = (err && err.message) || String(err);
+    if (msg.indexOf('HTTP 401') !== -1 || msg.indexOf('HTTP 403') !== -1) {
+      return 'sin permiso (revisa las políticas RLS del SQL de setup)';
+    }
+    if (msg.indexOf('HTTP 404') !== -1) {
+      return 'tabla no encontrada (ejecuta el SQL de setup)';
+    }
+    if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1) {
+      return 'sin conexión / bloqueado';
+    }
+    return msg.slice(0, 90);
+  }
+
+  function insertPing(db, source) {
+    var url = db.url + '/rest/v1/' + TABLE;
+    var headers = restHeaders(db);
+    headers['Prefer'] = 'return=representation';
+    return fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ source: source })
+    }).then(function (res) {
+      if (!res.ok) return res.text().then(function (t) { throw new Error('HTTP ' + res.status + ' — ' + t.slice(0, 140)); });
+      return res.json();
+    });
+  }
+
+  function loadDashboard() {
+    return Promise.all(DATABASES.map(fetchLastPing)).then(function () {
+      renderStatusRow();
+      renderGlobalCounter();
+      saveCache();
+      return Promise.all(DATABASES.map(fetchHistoryFor));
+    }).then(function (results) {
+      var merged = [].concat.apply([], results);
+      merged.sort(function (a, b) { return b.date - a.date; });
+      renderHistory(merged.slice(0, 36));
+    });
+  }
+
+  function setButtonBusy(busy) {
+    btn.disabled = busy;
+    btn.classList.toggle('spinning', busy);
+    btnLabel.textContent = busy ? 'Enviando…' : 'Keep Alive';
+  }
+
+  function handleKeepAlive() {
+    setButtonBusy(true);
+    resultBanner.className = 'result-banner';
+    resultBanner.innerHTML = '';
+
+    var promises = DATABASES.map(function (db) {
+      return insertPing(db, 'manual')
+        .then(function () { return { db: db, ok: true }; })
+        .catch(function (err) { return { db: db, ok: false, error: friendlyError(err) }; });
+    });
+
+    Promise.all(promises).then(function (results) {
+      var okCount = results.filter(function (r) { return r.ok; }).length;
+      var total = results.length;
+
+      if (okCount === total) {
+        showBanner('ok', '✅ Se registró el keep alive en las ' + total + ' bases correctamente.');
+      } else if (okCount > 0) {
+        var failedHtml = results.filter(function (r) { return !r.ok; })
+          .map(function (r) { return '<li>' + r.db.label + ': ' + r.error + '</li>'; }).join('');
+        showBanner('partial', '⚠️ Se registró en ' + okCount + ' de ' + total + ' bases. Falló:<ul>' + failedHtml + '</ul>');
+      } else {
+        var allFailedHtml = results.map(function (r) { return '<li>' + r.db.label + ': ' + r.error + '</li>'; }).join('');
+        showBanner('fail', '❌ No se pudo escribir en ninguna base.<ul>' + allFailedHtml + '</ul>');
+      }
+
+      setButtonBusy(false);
+      return loadDashboard();
+    });
+  }
+
+  btn.addEventListener('click', handleKeepAlive);
+  historyPrevBtn.addEventListener('click', function () { historyPage -= 1; renderHistoryPage(); });
+  historyNextBtn.addEventListener('click', function () { historyPage += 1; renderHistoryPage(); });
+
+  var resetWorkflowBtn = document.getElementById('resetWorkflowBtn');
+  if (resetWorkflowBtn) resetWorkflowBtn.addEventListener('click', setWorkflowResetNow);
+
+  // ---------- footer ----------
+  var footerCopyright = document.getElementById('footerCopyright');
+  if (footerCopyright) {
+    footerCopyright.textContent = '© ' + new Date().getFullYear() + ' ErkDevCr';
+  }
+
+  // ---------- boot ----------
+  var cached = loadCache();
+  if (cached) {
+    dbState = cached;
+    renderStatusRow();
+    renderGlobalCounter();
+  }
+  loadDashboard();
+  renderWorkflowReminder();
+
+  // refrescar textos relativos cada 30s sin volver a pedir datos
+  setInterval(function () {
+    renderStatusRow();
+    renderGlobalCounter();
+    renderWorkflowReminder();
+  }, 30000);
+
+  // refrescar datos reales cuando la app vuelve a estar visible
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') loadDashboard();
+  });
+
+  // ---------- PWA: registrar service worker ----------
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
