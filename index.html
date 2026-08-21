@@ -64,9 +64,7 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    background: rgba(9, 30, 40, .85);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: rgb(33, 66, 88);
     border-bottom: 1px solid rgba(255, 255, 255, .08);
   }
   .topbar {
@@ -80,16 +78,17 @@
     margin: 0 auto;
   }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .brand-icon {
-    width: 40px; height: 40px; border-radius: 12px;
-    background: linear-gradient(135deg, var(--accent2), var(--accent));
-    display: flex; align-items: center; justify-content: center;
+  .brand-icon-svg {
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
-    box-shadow: 0 4px 14px rgba(0,0,0,.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .brand-icon img { width: 24px; height: 24px; display: block; }
+  .brand-icon-svg svg { width: 100%; height: 100%; display: block; fill: #fff; }
   .brand-word { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .2px; line-height: 1.1; }
-  .brand-sub { font-size: 12px; color: var(--text3); }
+  .brand-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
 
   .global-counter {
     text-align: right;
@@ -316,9 +315,12 @@
   <div class="topbar-wrap">
     <div class="topbar">
       <div class="brand">
-        <div class="brand-icon"><img src="icons/icon-192.png" alt="Keep Alive"></div>
+        <div class="brand-icon-svg" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340.11 441.57"><path d="M276.22,87.25L150.77,0v49.21C65.94,58.94,0,132.03,0,220.78c0,44.89,17.04,87.5,47.28,119.49l63.07-43.86c-3.88-3.94-35.8-28.14-35.8-75.63s32.77-85.93,76.23-95.01v48.72l125.45-87.25Z"/><path d="M340.11,220.78c0-45.95-17.76-88.22-47.28-119.49,0,0-63.07,43.86-63.07,43.86,22.74,18.56,35.8,46.39,35.8,75.63,0,46.78-32.77,85.93-76.23,95.02v-48.72l-125.45,87.25,125.45,87.25v-49.21c84.83-9.73,150.77-82.82,150.77-171.57Z"/></svg>
+        </div>
         <div>
           <div class="brand-word">Keep Alive</div>
+          <div class="brand-sub">Corriendo desde: 21 ago 2026</div>
         </div>
       </div>
       <div class="global-counter">
