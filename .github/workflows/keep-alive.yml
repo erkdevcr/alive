@@ -1,0 +1,40 @@
+name: Keep Alive Supabase
+
+# Respaldo automático: hace ping a las 3 bases de datos aunque nadie
+# abra la app. Supabase pausa proyectos free tras 7 días sin actividad,
+# así que corremos cada 3 días para tener margen de sobra.
+on:
+  schedule:
+    - cron: '0 8 */3 * *'   # 08:00 UTC (02:00 hora Costa Rica) cada 3 días
+  workflow_dispatch: {}      # permite correrlo manualmente desde la pestaña Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Listerfy
+        run: |
+          curl -sf -X POST "https://onbexzwvbnumwuawesuu.supabase.co/rest/v1/keep_alive_pings" \
+            -H "apikey: sb_publishable_ez03kD82qJwruoL1Pojxhw_v8pSLdlR" \
+            -H "Authorization: Bearer sb_publishable_ez03kD82qJwruoL1Pojxhw_v8pSLdlR" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{"source":"github-action"}'
+
+      - name: Ping Presentaciones
+        run: |
+          curl -sf -X POST "https://pmeikbypkfemorfxdmsm.supabase.co/rest/v1/keep_alive_pings" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZWlrYnlwa2ZlbW9yZnhkbXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NTUzNjMsImV4cCI6MjA5MjQzMTM2M30.2daW-0uxmFXibibilO4Wc51kmq9TjERSkt8fkdY9NHk" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZWlrYnlwa2ZlbW9yZnhkbXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NTUzNjMsImV4cCI6MjA5MjQzMTM2M30.2daW-0uxmFXibibilO4Wc51kmq9TjERSkt8fkdY9NHk" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{"source":"github-action"}'
+
+      - name: Ping Timeline KL
+        run: |
+          curl -sf -X POST "https://utkqzxsnyvblqndtkntx.supabase.co/rest/v1/keep_alive_pings" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0a3F6eHNueXZibHFuZHRrbnR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTU5MjEsImV4cCI6MjA5MDQ5MTkyMX0.bxOZDHRtsYBkplffNzoxc2-OQMvG8qXdX_bXxg_CYlA" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0a3F6eHNueXZibHFuZHRrbnR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTU5MjEsImV4cCI6MjA5MDQ5MTkyMX0.bxOZDHRtsYBkplffNzoxc2-OQMvG8qXdX_bXxg_CYlA" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{"source":"github-action"}'
