@@ -2,11 +2,13 @@ name: Keep Alive Supabase
 
 # Respaldo automático: hace ping a las 3 bases de datos aunque nadie
 # abra la app. Supabase pausa proyectos free tras 7 días sin actividad,
-# así que corremos cada 3 días para tener margen de sobra.
+# pero según su propia documentación necesita "unas pocas peticiones
+# cada día durante la semana previa" para no pausar — un ping cada 3
+# días no siempre alcanza. Por eso corremos 3 veces al día.
 on:
   schedule:
-    - cron: '0 8 */3 * *'   # 08:00 UTC (02:00 hora Costa Rica) cada 3 días
-  workflow_dispatch: {}      # permite correrlo manualmente desde la pestaña Actions
+    - cron: '0 4,12,20 * * *'   # 04:00, 12:00 y 20:00 UTC (hora CR: 22:00, 06:00, 14:00) todos los días
+  workflow_dispatch: {}          # permite correrlo manualmente desde la pestaña Actions
 
 jobs:
   ping:
