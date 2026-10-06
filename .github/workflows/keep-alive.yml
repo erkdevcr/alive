@@ -1,6 +1,6 @@
 name: Keep Alive Supabase
 
-# Respaldo automático: hace ping a las 3 bases de datos aunque nadie
+# Respaldo automático: hace ping a las 4 bases de datos aunque nadie
 # abra la app. Supabase pausa proyectos free tras 7 días sin actividad,
 # pero según su propia documentación necesita "unas pocas peticiones
 # cada día durante la semana previa" para no pausar — un ping cada 3
@@ -37,6 +37,15 @@ jobs:
           curl -sf -X POST "https://utkqzxsnyvblqndtkntx.supabase.co/rest/v1/keep_alive_pings" \
             -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0a3F6eHNueXZibHFuZHRrbnR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTU5MjEsImV4cCI6MjA5MDQ5MTkyMX0.bxOZDHRtsYBkplffNzoxc2-OQMvG8qXdX_bXxg_CYlA" \
             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0a3F6eHNueXZibHFuZHRrbnR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTU5MjEsImV4cCI6MjA5MDQ5MTkyMX0.bxOZDHRtsYBkplffNzoxc2-OQMvG8qXdX_bXxg_CYlA" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{"source":"github-action"}'
+
+      - name: Ping DB 4
+        run: |
+          curl -sf -X POST "https://mfwlacwhgmxudkvjawsi.supabase.co/rest/v1/keep_alive_pings" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md2xhY3doZ214dWRrdmphd3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTUxOTAsImV4cCI6MjEwNjg3MTE5MH0.Hb3R97_AJdi0XamDEbS1mvuO1WktB06gC1x3kcJCSlA" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md2xhY3doZ214dWRrdmphd3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTUxOTAsImV4cCI6MjEwNjg3MTE5MH0.Hb3R97_AJdi0XamDEbS1mvuO1WktB06gC1x3kcJCSlA" \
             -H "Content-Type: application/json" \
             -H "Prefer: return=minimal" \
             -d '{"source":"github-action"}'
