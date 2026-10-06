@@ -41,7 +41,7 @@ jobs:
             -H "Prefer: return=minimal" \
             -d '{"source":"github-action"}'
 
-      - name: Ping DB 4
+      - name: Ping Sorteos
         run: |
           curl -sf -X POST "https://mfwlacwhgmxudkvjawsi.supabase.co/rest/v1/keep_alive_pings" \
             -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md2xhY3doZ214dWRrdmphd3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTUxOTAsImV4cCI6MjEwNjg3MTE5MH0.Hb3R97_AJdi0XamDEbS1mvuO1WktB06gC1x3kcJCSlA" \
