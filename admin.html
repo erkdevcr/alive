@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Sorteos Personalizados</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#1b1033; --panel:rgba(255,255,255,.06); --border:rgba(255,255,255,.12);
+    --text:#f3f1fb; --muted:#b9b2d6; --primary:#5b3df0; --primary-hover:#6a4ef6; --primary-dark:#4527d1;
+    --ok:#34c08a; --ok-bg:rgba(52,192,138,.16); --warn:#f2b544; --warn-bg:rgba(242,181,68,.16);
+    --danger:#ff8d9c; --danger-bg:rgba(255,110,130,.16); --danger-border:rgba(255,141,156,.4);
+    --radius:12px; --shadow:0 10px 30px rgba(8,4,24,.35);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg) radial-gradient(1200px 800px at 15% -10%, rgba(91,61,240,.35), transparent 60%);color:var(--text);min-height:100vh;}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 24px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:20px;margin-bottom:20px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+  .panel h2{font-size:15px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+  label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;font-weight:600;}
+  input,select{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border);
+    background:rgba(10,6,24,.45);color:var(--text);font-size:14px;outline:none;}
+  input:focus,select:focus{border-color:var(--primary);}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  .row > div{flex:1;min-width:140px;}
+  button{font:inherit;cursor:pointer;border-radius:9px;border:none;padding:9px 16px;font-weight:650;font-size:13.5px;}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-hover);}
+  .btn-secondary{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:rgba(255,255,255,.14);}
+  .btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);}
+  .btn-danger:hover{background:rgba(255,110,130,.26);}
+  .btn-sm{padding:5px 10px;font-size:12px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+    padding:8px 10px;border-bottom:1px solid var(--border);}
+  td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+  .pill-activo{background:var(--ok-bg);color:var(--ok);}
+  .pill-sin_usar{background:rgba(255,255,255,.1);color:var(--muted);}
+  .pill-dado_de_baja{background:var(--danger-bg);color:var(--danger);}
+  .pill-vencido{background:var(--warn-bg);color:var(--warn);}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .msg{font-size:13px;margin-top:10px;min-height:1.2em;}
+  .msg-error{color:var(--danger);}
+  .msg-ok{color:var(--ok);}
+  .codigos-generados{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .codigo-chip{background:rgba(91,61,240,.22);border:1px solid rgba(124,99,255,.4);border-radius:8px;
+    padding:6px 10px;font-family:ui-monospace,monospace;font-size:13px;cursor:pointer;}
+  .codigo-chip:hover{background:rgba(91,61,240,.36);}
+  .empty{color:var(--muted);font-size:13.5px;padding:20px 0;text-align:center;}
+  .login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg)
+    radial-gradient(1200px 800px at 15% -10%, rgba(91,61,240,.35), transparent 60%);}
+  .login-card{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:28px 24px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+  .login-card h1{text-align:center;font-size:19px;}
+  .login-card .sub{text-align:center;}
+  .login-card button{width:100%;margin-top:14px;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  .filtros{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .filtros input,.filtros select{width:auto;min-width:160px;}
+  @media (max-width:640px){
+    table, thead, tbody, th, td, tr{display:block;}
+    thead{display:none;}
+    tr{border-bottom:1px solid var(--border);padding:10px 0;}
+    td{border:none;padding:3px 0;}
+    td::before{content:attr(data-label);display:inline-block;width:120px;color:var(--muted);font-size:11px;text-transform:uppercase;}
+  }
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="pantalla-login-admin">
+  <div class="login-card">
+    <h1>Panel de administrador</h1>
+    <p class="sub">Sorteos Personalizados</p>
+    <div>
+      <label for="admin-email">Correo</label>
+      <input type="email" id="admin-email" autocomplete="username" placeholder="tu@correo.com">
+    </div>
+    <div style="margin-top:12px;">
+      <label for="admin-password">Contraseña</label>
+      <input type="password" id="admin-password" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="btn-admin-login">Entrar</button>
+    <div class="msg" id="admin-login-msg"></div>
+  </div>
+</div>
+
+<div class="wrap" id="panel-admin" style="display:none;">
+  <div class="topbar">
+    <div>
+      <h1>Sorteos Personalizados</h1>
+      <p class="sub" style="margin:0;">Panel de administrador · licencias por código</p>
+    </div>
+    <button class="btn-secondary" id="btn-cerrar-sesion">Cerrar sesión</button>
+  </div>
+
+  <div class="panel">
+    <h2>Generar códigos nuevos</h2>
+    <div class="row">
+      <div>
+        <label for="gen-tipo">Tipo de código</label>
+        <select id="gen-tipo">
+          <option value="1_mes">1 mes</option>
+          <option value="3_meses">3 meses</option>
+          <option value="1_anio">1 año</option>
+        </select>
+      </div>
+      <div>
+        <label for="gen-cantidad">Cantidad a generar</label>
+        <input type="number" id="gen-cantidad" value="1" min="1" max="100">
+      </div>
+      <div style="flex:0 0 auto;">
+        <button class="btn-primary" id="btn-generar-codigos">Generar</button>
+      </div>
+    </div>
+    <div class="msg" id="gen-msg"></div>
+    <div class="codigos-generados" id="codigos-generados"></div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <h2 style="margin:0;">Códigos y clientes</h2>
+      <button class="btn-secondary btn-sm" id="btn-refrescar-codigos">Actualizar</button>
+    </div>
+    <div class="filtros">
+      <input type="text" id="filtro-busqueda" placeholder="Buscar por código, nombre o teléfono...">
+      <select id="filtro-estado">
+        <option value="">Todos los estados</option>
+        <option value="sin_usar">Sin usar</option>
+        <option value="activo">Activo</option>
+        <option value="dado_de_baja">Dado de baja</option>
+      </select>
+    </div>
+    <div id="tabla-codigos-wrap"><div class="empty">Cargando...</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <h2 style="margin:0;">Monitoreo de intentos (por dispositivo)</h2>
+      <button class="btn-secondary btn-sm" id="btn-refrescar-intentos">Actualizar</button>
+    </div>
+    <div id="tabla-intentos-wrap"><div class="empty">Cargando...</div></div>
+  </div>
+</div>
+
+<!-- MODAL: editar fecha de vencimiento -->
+<div id="modal-fecha-overlay" style="display:none;position:fixed;inset:0;background:rgba(5,4,18,.62);z-index:100;align-items:center;justify-content:center;">
+  <div class="panel" style="max-width:360px;width:90%;">
+    <h2>Cambiar fecha de vencimiento</h2>
+    <label for="modal-fecha-input">Nueva fecha</label>
+    <input type="date" id="modal-fecha-input">
+    <div class="row" style="margin-top:16px;justify-content:flex-end;">
+      <button class="btn-secondary" id="btn-modal-fecha-cancelar" style="flex:0 0 auto;">Cancelar</button>
+      <button class="btn-primary" id="btn-modal-fecha-guardar" style="flex:0 0 auto;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — mismo proyecto Supabase que usa la app (index.html)
+   ============================================================ */
+const SUPABASE_URL = 'https://mfwlacwhgmxudkvjawsi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md2xhY3doZ214dWRrdmphd3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTUxOTAsImV4cCI6MjEwNjg3MTE5MH0.Hb3R97_AJdi0XamDEbS1mvuO1WktB06gC1x3kcJCSlA';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const DURACION_POR_TIPO = { '1_mes': 30, '3_meses': 90, '1_anio': 365 };
+const TIPO_LEGIBLE = { '1_mes': '1 mes', '3_meses': '3 meses', '1_anio': '1 año' };
+const ESTADO_LEGIBLE = { 'sin_usar': 'Sin usar', 'activo': 'Activo', 'dado_de_baja': 'Dado de baja' };
+const RESULTADO_LEGIBLE = {
+  'activado': 'Activado', 'aceptado': 'Aceptado', 'tomado_otro_dispositivo': 'Tomó control (otro dispositivo)',
+  'otro_dispositivo_detectado': 'Bloqueado: otro dispositivo', 'codigo_invalido': 'Código inválido',
+  'codigo_caducado': 'Código caducado', 'codigo_dado_de_baja': 'Código dado de baja'
+};
+
+let todosLosCodigos = [];
+let codigoEditandoFecha = null;
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function formatFecha(fechaISO){
+  if(!fechaISO) return '—';
+  const d = new Date(fechaISO);
+  return pad2(d.getDate()) + '/' + pad2(d.getMonth()+1) + '/' + d.getFullYear();
+}
+function diasRestantes(fechaISO){
+  if(!fechaISO) return null;
+  return Math.ceil((new Date(fechaISO) - new Date()) / 86400000);
+}
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function toast(el, texto, tipo){
+  el.textContent = texto;
+  el.className = 'msg' + (tipo ? ' msg-' + tipo : '');
+}
+
+/* ---------- Autenticación ---------- */
+async function initSesion(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){ mostrarPanelAdmin(); } else { mostrarLoginAdmin(); }
+}
+function mostrarLoginAdmin(){
+  document.getElementById('pantalla-login-admin').style.display = 'flex';
+  document.getElementById('panel-admin').style.display = 'none';
+}
+function mostrarPanelAdmin(){
+  document.getElementById('pantalla-login-admin').style.display = 'none';
+  document.getElementById('panel-admin').style.display = 'block';
+  cargarCodigos();
+  cargarIntentos();
+}
+
+document.getElementById('btn-admin-login').addEventListener('click', async ()=>{
+  const email = document.getElementById('admin-email').value.trim();
+  const password = document.getElementById('admin-password').value;
+  const msg = document.getElementById('admin-login-msg');
+  if(!email || !password){ toast(msg, 'Ingresa tu correo y contraseña', 'error'); return; }
+  toast(msg, 'Entrando...', null);
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ toast(msg, 'Correo o contraseña incorrectos.', 'error'); return; }
+  toast(msg, '', null);
+  mostrarPanelAdmin();
+});
+['admin-email','admin-password'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{
+    if(e.key === 'Enter') document.getElementById('btn-admin-login').click();
+  });
+});
+document.getElementById('btn-cerrar-sesion').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  mostrarLoginAdmin();
+});
+
+/* ---------- Generador de códigos ---------- */
+const CHARSET_CODIGO = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // sin 0/O/1/I para evitar confusiones
+function generarCodigoAleatorio(){
+  let partes = [];
+  for(let g=0; g<2; g++){
+    let grupo = '';
+    for(let i=0; i<4; i++) grupo += CHARSET_CODIGO[Math.floor(Math.random()*CHARSET_CODIGO.length)];
+    partes.push(grupo);
+  }
+  return partes.join('-');
+}
+
+document.getElementById('btn-generar-codigos').addEventListener('click', async ()=>{
+  const tipo = document.getElementById('gen-tipo').value;
+  const cantidad = Math.max(1, Math.min(100, parseInt(document.getElementById('gen-cantidad').value, 10) || 1));
+  const msg = document.getElementById('gen-msg');
+  const duracionDias = DURACION_POR_TIPO[tipo];
+
+  const nuevos = [];
+  for(let i=0; i<cantidad; i++){
+    nuevos.push({ codigo: generarCodigoAleatorio(), tipo, duracion_dias: duracionDias, estado: 'sin_usar' });
+  }
+
+  toast(msg, 'Generando...', null);
+  const { data, error } = await sb.from('licencias').insert(nuevos).select();
+  if(error){
+    toast(msg, 'No se pudieron generar los códigos: ' + error.message, 'error');
+    return;
+  }
+  toast(msg, `${data.length} código${data.length===1?'':'s'} generado${data.length===1?'':'s'} (${TIPO_LEGIBLE[tipo]}).`, 'ok');
+
+  const cont = document.getElementById('codigos-generados');
+  cont.innerHTML = '';
+  data.forEach(row=>{
+    const chip = document.createElement('div');
+    chip.className = 'codigo-chip';
+    chip.textContent = row.codigo;
+    chip.title = 'Clic para copiar';
+    chip.addEventListener('click', ()=>{
+      if(navigator.clipboard) navigator.clipboard.writeText(row.codigo).catch(()=>{});
+      chip.textContent = 'Copiado ✓';
+      setTimeout(()=>{ chip.textContent = row.codigo; }, 1200);
+    });
+    cont.appendChild(chip);
+  });
+
+  cargarCodigos();
+});
+
+/* ---------- Listado de códigos / clientes ---------- */
+async function cargarCodigos(){
+  const wrap = document.getElementById('tabla-codigos-wrap');
+  wrap.innerHTML = '<div class="empty">Cargando...</div>';
+  const { data, error } = await sb.from('licencias').select('*').order('fecha_creacion', { ascending: false });
+  if(error){
+    wrap.innerHTML = `<div class="empty">No se pudo cargar: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  todosLosCodigos = data || [];
+  renderTablaCodigos();
+}
+
+function renderTablaCodigos(){
+  const wrap = document.getElementById('tabla-codigos-wrap');
+  const busqueda = document.getElementById('filtro-busqueda').value.trim().toLowerCase();
+  const estadoFiltro = document.getElementById('filtro-estado').value;
+
+  let filas = todosLosCodigos.filter(r=>{
+    if(estadoFiltro && r.estado !== estadoFiltro) return false;
+    if(busqueda){
+      const campo = [r.codigo, r.nombre_cliente, r.telefono_cliente].filter(Boolean).join(' ').toLowerCase();
+      if(!campo.includes(busqueda)) return false;
+    }
+    return true;
+  });
+
+  if(filas.length === 0){
+    wrap.innerHTML = '<div class="empty">No hay códigos que coincidan.</div>';
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Código</th><th>Tipo</th><th>Cliente</th><th>Teléfono</th><th>Estado</th>
+        <th>Vence</th><th>Dispositivo</th><th>Acciones</th>
+      </tr></thead>
+      <tbody>
+        ${filas.map(r=>{
+          const dias = diasRestantes(r.fecha_vencimiento);
+          const vencido = r.estado === 'activo' && dias !== null && dias < 0;
+          const pillClase = vencido ? 'pill-vencido' : ('pill-' + r.estado);
+          const pillTexto = vencido ? 'Vencido' : ESTADO_LEGIBLE[r.estado];
+          const vencTexto = r.fecha_vencimiento
+            ? formatFecha(r.fecha_vencimiento) + (dias !== null ? ` (${dias >= 0 ? 'faltan ' + dias + 'd' : 'venció'})` : '')
+            : '—';
+          return `<tr data-id="${r.id}">
+            <td data-label="Código"><span class="mono">${escapeHtml(r.codigo)}</span></td>
+            <td data-label="Tipo">${TIPO_LEGIBLE[r.tipo] || r.tipo}</td>
+            <td data-label="Cliente">${escapeHtml(r.nombre_cliente) || '—'}</td>
+            <td data-label="Teléfono">${escapeHtml(r.telefono_cliente) || '—'}</td>
+            <td data-label="Estado"><span class="pill ${pillClase}">${pillTexto}</span></td>
+            <td data-label="Vence">${vencTexto}</td>
+            <td data-label="Dispositivo"><span class="mono" title="${escapeHtml(r.fingerprint)||''}">${r.fingerprint ? escapeHtml(r.fingerprint.slice(0,10)) + '…' : '—'}</span></td>
+            <td data-label="Acciones">
+              <button class="btn-secondary btn-sm" data-accion="fecha" ${!r.fecha_vencimiento ? 'disabled' : ''}>Cambiar fecha</button>
+              <button class="btn-danger btn-sm" data-accion="baja" ${r.estado === 'dado_de_baja' ? 'disabled' : ''}>Dar de baja</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  wrap.querySelectorAll('button[data-accion]').forEach(btn=>{
+    const tr = btn.closest('tr');
+    const id = tr.dataset.id;
+    const row = todosLosCodigos.find(r=>String(r.id) === id);
+    btn.addEventListener('click', ()=>{
+      if(btn.dataset.accion === 'fecha') abrirModalFecha(row);
+      else if(btn.dataset.accion === 'baja') darDeBajaCodigo(row);
+    });
+  });
+}
+
+document.getElementById('filtro-busqueda').addEventListener('input', renderTablaCodigos);
+document.getElementById('filtro-estado').addEventListener('change', renderTablaCodigos);
+document.getElementById('btn-refrescar-codigos').addEventListener('click', cargarCodigos);
+
+async function darDeBajaCodigo(row){
+  if(!confirm(`¿Dar de baja el código ${row.codigo}? El dispositivo que lo tenga activo perderá el acceso de inmediato.`)) return;
+  const { error } = await sb.from('licencias').update({ estado: 'dado_de_baja' }).eq('id', row.id);
+  if(error){ alert('No se pudo dar de baja: ' + error.message); return; }
+  cargarCodigos();
+}
+
+function abrirModalFecha(row){
+  codigoEditandoFecha = row;
+  const input = document.getElementById('modal-fecha-input');
+  input.value = row.fecha_vencimiento ? new Date(row.fecha_vencimiento).toISOString().slice(0,10) : '';
+  document.getElementById('modal-fecha-overlay').style.display = 'flex';
+}
+document.getElementById('btn-modal-fecha-cancelar').addEventListener('click', ()=>{
+  document.getElementById('modal-fecha-overlay').style.display = 'none';
+  codigoEditandoFecha = null;
+});
+document.getElementById('btn-modal-fecha-guardar').addEventListener('click', async ()=>{
+  const nueva = document.getElementById('modal-fecha-input').value;
+  if(!nueva || !codigoEditandoFecha) return;
+  const fechaISO = new Date(nueva + 'T23:59:59Z').toISOString(); // fin del dia elegido, fijo en UTC (evita que la zona horaria del navegador corra la fecha)
+  const { error } = await sb.from('licencias').update({ fecha_vencimiento: fechaISO }).eq('id', codigoEditandoFecha.id);
+  document.getElementById('modal-fecha-overlay').style.display = 'none';
+  if(error){ alert('No se pudo actualizar la fecha: ' + error.message); return; }
+  codigoEditandoFecha = null;
+  cargarCodigos();
+});
+
+/* ---------- Monitoreo de intentos ---------- */
+async function cargarIntentos(){
+  const wrap = document.getElementById('tabla-intentos-wrap');
+  wrap.innerHTML = '<div class="empty">Cargando...</div>';
+  const { data, error } = await sb.from('intentos_login').select('*').order('creado_en', { ascending: false }).limit(200);
+  if(error){
+    wrap.innerHTML = `<div class="empty">No se pudo cargar: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  if(!data || data.length === 0){
+    wrap.innerHTML = '<div class="empty">Todavía no hay intentos registrados.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Fecha</th><th>Código</th><th>Resultado</th><th>Dispositivo</th><th>Nombre</th></tr></thead>
+      <tbody>
+        ${data.map(r=>{
+          const alerta = r.resultado === 'otro_dispositivo_detectado' || r.resultado === 'tomado_otro_dispositivo';
+          return `<tr>
+            <td data-label="Fecha">${new Date(r.creado_en).toLocaleString('es-CR')}</td>
+            <td data-label="Código"><span class="mono">${escapeHtml(r.codigo_texto)}</span></td>
+            <td data-label="Resultado"><span class="pill ${alerta ? 'pill-vencido' : (r.resultado==='aceptado'||r.resultado==='activado' ? 'pill-activo' : 'pill-dado_de_baja')}">${RESULTADO_LEGIBLE[r.resultado] || r.resultado}</span></td>
+            <td data-label="Dispositivo"><span class="mono" title="${escapeHtml(r.fingerprint)}">${escapeHtml((r.fingerprint||'').slice(0,10))}…</span></td>
+            <td data-label="Nombre">${escapeHtml(r.nombre) || '—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+document.getElementById('btn-refrescar-intentos').addEventListener('click', cargarIntentos);
+
+initSesion();
+</script>
+</body>
+</html>
